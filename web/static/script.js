@@ -1,19 +1,45 @@
 // Global state
 let currentUsername = '';
 let currentRole = 'user';
+let alertInterval = null;
 
 // Utility: Show Alert
 function showAlert(message, isError = true) {
     const box = document.getElementById('alert-box');
     box.textContent = message;
     box.className = `alert ${isError ? 'error' : 'success'}`;
-    
-    setTimeout(() => {
-        box.classList.add('hidden');
-    }, 5000);
+
+    // Clear any existing active countdown interval
+    if (alertInterval) {
+        clearInterval(alertInterval);
+        alertInterval = null;
+    }
+
+    // Check if the message contains a lockout countdown pattern (e.g. "Try again in 30 second(s)")
+    const match = message.match(/Try again in (\d+)/i);
+    if (match) {
+        let remainingSeconds = parseInt(match[1], 10);
+        
+        alertInterval = setInterval(() => {
+            remainingSeconds--;
+            if (remainingSeconds > 0) {
+                // Update the text to display the current remaining seconds
+                box.textContent = message.replace(/\d+(?=\s*second)/i, remainingSeconds);
+            } else {
+                clearInterval(alertInterval);
+                alertInterval = null;
+                box.textContent = "Lockout expired. You can try logging in now.";
+                box.className = "alert success";
+            }
+        }, 1000);
+    }
 }
 
 function hideAlert() {
+    if (alertInterval) {
+        clearInterval(alertInterval);
+        alertInterval = null;
+    }
     document.getElementById('alert-box').classList.add('hidden');
 }
 
