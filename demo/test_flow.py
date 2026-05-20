@@ -3,7 +3,7 @@ test_flow.py — Automated Demonstration & Test Suite
 =====================================================
 
 This module exercises every feature of the Secure Authentication System
-without requiring manual interaction.  It uses a temporary JSON file so
+without requiring manual interaction.  It uses a temporary database file so
 the main user store is not affected.
 
 Run directly::
@@ -42,17 +42,6 @@ if _project_root not in sys.path:
 
 from secure_auth_system.auth.auth_manager import AuthManager
 from secure_auth_system.auth.storage import StorageManager
-from secure_auth_system.utils.helpers import (
-    Colours,
-    error,
-    format_stats_table,
-    format_user_table,
-    header,
-    info,
-    section,
-    success,
-    warning,
-)
 
 
 # ────────────────────────────────────────────────────────────────────── #
@@ -64,19 +53,19 @@ _fail_count = 0
 
 
 def _assert(condition: bool, description: str) -> None:
-    """Simple test assertion with coloured output."""
+    """Simple test assertion."""
     global _pass_count, _fail_count
     if condition:
         _pass_count += 1
-        print(f"  {Colours.GREEN}PASS{Colours.RESET}  {description}")
+        print(f"  PASS  {description}")
     else:
         _fail_count += 1
-        print(f"  {Colours.RED}FAIL{Colours.RESET}  {description}")
+        print(f"  FAIL  {description}")
 
 
 def _step(title: str) -> None:
     """Print a step header."""
-    print(section(title))
+    print(f"\n── {title} ──")
 
 
 # ────────────────────────────────────────────────────────────────────── #
@@ -85,12 +74,14 @@ def _step(title: str) -> None:
 
 def run_demo() -> None:
     """Execute the full demonstration / test suite."""
-    print(header("Secure Auth System — Demo / Test Flow"))
+    print("\n╔════════════════════════════════════════════════════════╗")
+    print("║        Secure Auth System — Demo / Test Flow           ║")
+    print("╚════════════════════════════════════════════════════════╝\n")
 
     # Use a temp file so we don't pollute the real data store
     temp_dir = tempfile.mkdtemp(prefix="secure_auth_demo_")
     temp_db = os.path.join(temp_dir, "test_users.db")
-    print(info(f"Using temporary store: {temp_db}\n"))
+    print(f"ℹ Using temporary store: {temp_db}\n")
 
     storage = StorageManager(filepath=temp_db)
     auth = AuthManager(storage=storage)
@@ -138,7 +129,7 @@ def run_demo() -> None:
     # Verify plaintext password is NOT stored
     user_data = storage.get_user("alice")
     _assert(
-        "password" not in str(user_data).lower().replace("password_hash", "").replace("password_hash", ""),
+        "password" not in str(user_data).lower().replace("password_hash", ""),
         "Plaintext password NOT present in stored data"
     )
     _assert(user_data is not None and "salt" in user_data, "Salt is stored")
@@ -206,7 +197,7 @@ def run_demo() -> None:
         charlie["locked_until"] = time.time() + 3
         storage.save_user("charlie", charlie)
 
-    print(info("Waiting 4 seconds for lockout to expire…"))
+    print("ℹ Waiting 4 seconds for lockout to expire…")
     time.sleep(4)
 
     ok, msg = auth.login("charlie", "TestPass1234!")
@@ -284,15 +275,11 @@ def run_demo() -> None:
 
     # List users
     ok, users = auth.admin_list_users("bob_admin")
-    _assert(ok, "Admin can list users")
-    if ok:
-        print(format_user_table(users))
+    _assert(ok, f"Admin can list users. Found {len(users)} users.")
 
     # View stats
     ok, stats = auth.admin_failed_login_stats("bob_admin")
-    _assert(ok, "Admin can view failed-login stats")
-    if ok:
-        print(format_stats_table(stats))
+    _assert(ok, f"Admin can view failed-login stats. Found {len(stats)} records.")
 
     # Unlock alice (she may have failed attempts from test 6)
     alice_data = storage.get_user("alice")
@@ -354,16 +341,16 @@ def run_demo() -> None:
     #  Summary                                                           #
     # ────────────────────────────────────────────────────────────────── #
 
-    print(header("Test Summary"))
+    _step("Test Summary")
     total = _pass_count + _fail_count
-    print(f"\n  Total : {total}")
-    print(f"  {Colours.GREEN}Passed: {_pass_count}{Colours.RESET}")
-    print(f"  {Colours.RED}Failed: {_fail_count}{Colours.RESET}")
+    print(f"  Total : {total}")
+    print(f"  Passed: {_pass_count}")
+    print(f"  Failed: {_fail_count}")
 
     if _fail_count == 0:
-        print(f"\n  {success('All tests passed!')}")
+        print("\n  ✔ All tests passed!")
     else:
-        print(f"\n  {error(f'{_fail_count} test(s) failed.')}")
+        print(f"\n  ✘ {_fail_count} test(s) failed.")
 
     # Clean up temp file
     try:
